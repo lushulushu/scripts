@@ -13,7 +13,7 @@ _join() {
     cat $2 >> $3
 }
 
-export -f _wc
-export -f _cp
-export -f _split
-export -f _join
+# export -f _wc
+# export -f _cp
+# export -f _split
+# export -f _join

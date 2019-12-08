@@ -2,22 +2,18 @@
 
 import re
 import subprocess, os
+import sys, getopt
+
+# commandline options
 
 # stage variable
 OUT_MAP = {}
-OUT_MAP["IN-1"] = ["1.txt"]
 LINES = []
 
 # temp variable
 FUNC_INFO = {}
 FUNC_INPUT = {}
 PROCESS = True
-
-LINES.append(" IN-1 > cp > cp > wc")
-LINES.append(" wc > cp > split")
-LINES.append("split|1 > cp  > 1|join")
-LINES.append("split|2 > cp > 2|join")
-LINES.append("join > cp")
 
 def _trim(str):
     return re.sub("^[ ]+|[ ]+$", "", str)
@@ -35,6 +31,18 @@ def _int(i):
     if i <= 0:
         i = 1
     return i
+
+def _read_conf(file):
+    global LINES
+    f = open(file, "r")
+    lines = f.readlines()
+    for l in lines:
+        l = _trim(l)
+        # skip comments
+        if re.match("^#.*$", l):
+            continue
+        if l:
+            LINES.append(l)
 
 # search for function total input/output count
 def _func_total_para(func):
@@ -111,7 +119,7 @@ def _run_func(func, fid, in_file_list, out_para_total):
     global PROCESS, OUT_MAP
     in_file = in_file_list[0]
     out_file = in_file + "_" + func
-    cmd = "_%s" % (func)
+    cmd = "source ./func.sh && _%s" % (func)
 
     for f in in_file_list:
         cmd = "%s %s" % (cmd, f)
@@ -146,7 +154,7 @@ def _process_multi_infile_func(ready_func_id, out_para_total):
         func_id = "%s-%d" % (func, fid)
         if func_id == ready_func_id and is_file:
             LINES[i] = "%s %s" % (origin_func, _trim(m.groups()[2]))
-            print("processed multi-in line %d:  %s" % (i, LINES[i]))
+            print("processed multi-input line %d:  %s" % (i, LINES[i]))
 
 # prepare to run function
 def _process_func():
@@ -178,18 +186,53 @@ def _process_func():
             print("ignore line %d:  %s" % (i, LINES[i]))
             continue
 
-while PROCESS:
-    PROCESS = False
+def _usage(exit_num):
+    print ('Usage:\n  batch.py -i <input_file> -c [config_file:=\'process.conf\'] -d [output_dir]')
+    sys.exit(exit_num)
 
-    _func_replace_with_file()
+def main(argv):
+    global PROCESS, OUT_MAP
+    conf_file = "process.conf"
+    input = False
+    try:
+        opts, args = getopt.getopt(argv,"hi:c:d:",["input=","config=","outdir="])
+    except getopt.GetoptError:
+        _usage(1)
+    for opt, arg in opts:
+        if opt == '-h':
+            _usage(0)
+        elif opt in ("-i", "--input"):
+            OUT_MAP["IN-1"] = [arg]
+            input = True
+        elif opt in ("-c", "--config"):
+            conf_file = arg
+        elif opt in ("-d"):
+            out_dir = arg
 
-    # print("begin dump")
-    # for line in lines:
-    #     print(line)
-    # print("after dump")
+    if not input:
+        print("no input file")
+        _usage(1)
+        exit(1)
 
-    _process_func()
-    print(OUT_MAP)
-    print("")
+    _read_conf(conf_file)
+
+    while PROCESS:
+        PROCESS = False
+
+        _func_replace_with_file()
+
+        # print("begin dump")
+        # for line in lines:
+        #     print(line)
+        # print("after dump")
+
+        _process_func()
+        # print(OUT_MAP)
+        # print("")
+
+
+if __name__== "__main__":
+    main(sys.argv[1:])
+
 
 
